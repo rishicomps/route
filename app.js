@@ -1,353 +1,523 @@
-const STORAGE_KEY = "schedula-data";
+// Routé — micro-managing timetable (LocalStorage)
+// Requirements implemented:
+// - Default view: timetable shows ONLY start/end/duration
+// - Click task: reveals steps + required items (grouped under the task)
+// - Inventory is a drawer, opened only when clicked
+// - Clicking a required item shows availability in Inspector (and can open drawer)
 
-const defaultData = {
-  tasks: [
-    {
-      id: crypto.randomUUID(),
-      title: "Morning prep",
-      time: "07:30",
-      duration: 45,
-      items: ["Notebook", "Pen", "Tea leaves"],
-      steps: [
-        { text: "Review daily agenda", link: "https://www.youtube.com/watch?v=G1IbRujko-A" },
-        { text: "Steep tea and hydrate", link: "https://www.youtube.com/watch?v=G1IbRujko-A" },
-      ],
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "Deep work sprint",
-      time: "09:00",
-      duration: 90,
-      items: ["Headphones", "Timer"],
-      steps: [
-        { text: "Set focus timer", link: "https://www.youtube.com/watch?v=9QiE-M1LrZk" },
-        { text: "Single-task for 45 minutes", link: "https://www.youtube.com/watch?v=9QiE-M1LrZk" },
-      ],
-    },
-  ],
-  inventory: [
-    { id: crypto.randomUUID(), name: "Notebook", qty: 2 },
-    { id: crypto.randomUUID(), name: "Pen", qty: 6 },
-    { id: crypto.randomUUID(), name: "Tea leaves", qty: 1 },
-    { id: crypto.randomUUID(), name: "Headphones", qty: 1 },
-    { id: crypto.randomUUID(), name: "Timer", qty: 1 },
-  ],
-};
+const STORAGE_KEY = "route_state_v2";
 
-const timetableEl = document.getElementById("timetable");
-const inventoryEl = document.getElementById("inventory");
-const inspectorEl = document.getElementById("inspector");
-const inspectorTagEl = document.getElementById("inspector-tag");
-const addTaskBtn = document.getElementById("add-task-btn");
-const taskDialog = document.getElementById("task-dialog");
-const taskForm = document.getElementById("task-form");
-const cancelTaskBtn = document.getElementById("cancel-task");
-const resetBtn = document.getElementById("reset-btn");
-const inventoryForm = document.getElementById("inventory-form");
-
+/** @type {{inventory: Record<string, {qty:number, unit:string}>, schedule: any[]}} */
 let state = loadState();
 
-function loadState() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch (error) {
-      console.warn("Failed to parse stored data", error);
-    }
-  }
-  return structuredClone(defaultData);
-}
+const els = {
+  timetable: document.getElementById("timetable"),
+  inspector: document.getElementById("inspector"),
 
+  inventoryToggleBtn: document.getElementById("inventoryToggleBtn"),
+  inventoryDrawer: document.getElementById("inventoryDrawer"),
+  closeInventoryBtn: document.getElementById("closeInventoryBtn"),
+  inventoryList: document.getElementById("inventoryList"),
+
+  inventoryForm: document.getElementById("inventoryForm"),
+  invName: document.getElementById("invName"),
+  invQty: document.getElementById("invQty"),
+  invUnit: document.getElementById("invUnit"),
+
+  exportBtn: document.getElementById("exportBtn"),
+  importBtn: document.getElementById("importBtn"),
+  resetBtn: document.getElementById("resetBtn"),
+
+  importDialog: document.getElementById("importDialog"),
+  importText: document.getElementById("importText"),
+  doImportBtn: document.getElementById("doImportBtn"),
+
+  addTaskBtn: document.getElementById("addTaskBtn"),
+  taskDialog: document.getElementById("taskDialog"),
+  taskTime: document.getElementById("taskTime"),
+  taskDuration: document.getElementById("taskDuration"),
+  taskTitle: document.getElementById("taskTitle"),
+  taskNotes: document.getElementById("taskNotes"),
+  saveTaskBtn: document.getElementById("saveTaskBtn"),
+};
+
+// ---------- Storage ----------
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function render() {
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return demoState();
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed.inventory || !parsed.schedule) throw new Error("bad");
+    return parsed;
+  } catch {
+    return demoState();
+  }
+}
+
+function demoState() {
+  return {
+    inventory: {
+      "Notebook": { qty: 2, unit: "" },
+      "Pen": { qty: 6, unit: "" },
+      "Tea leaves": { qty: 1, unit: "pack" },
+      "Timer": { qty: 1, unit: "" },
+      "Headphones": { qty: 1, unit: "" },
+      "Yoga mat": { qty: 1, unit: "" },
+      "Eggs": { qty: 6, unit: "pcs" },
+      "Milk": { qty: 500, unit: "ml" },
+    },
+    schedule: [
+      {
+        id: uid(),
+        time: "07:30",
+        durationMins: 45,
+        title: "Morning prep",
+        notes: "",
+        steps: [
+          { name: "Review daily agenda", link: "https://www.youtube.com/results?search_query=morning+planning+routine" },
+          { name: "Steep tea and hydrate", link: "https://www.youtube.com/results?search_query=how+to+make+tea" },
+        ],
+        required: [
+          { name: "Notebook", qty: 1, unit: "" },
+          { name: "Pen", qty: 1, unit: "" },
+          { name: "Tea leaves", qty: 1, unit: "pack" },
+          { name: "Timer", qty: 1, unit: "" },
+        ],
+      },
+      {
+        id: uid(),
+        time: "09:00",
+        durationMins: 90,
+        title: "Deep work sprint",
+        notes: "",
+        steps: [
+          { name: "Focus music (optional)", link: "https://www.youtube.com/results?search_query=deep+work+music" },
+          { name: "Pomodoro 45/10", link: "https://www.youtube.com/results?search_query=pomodoro+timer+45+10" },
+        ],
+        required: [
+          { name: "Headphones", qty: 1, unit: "" },
+          { name: "Timer", qty: 1, unit: "" },
+        ],
+      },
+      {
+        id: uid(),
+        time: "19:00",
+        durationMins: 60,
+        title: "Cooking",
+        notes: "",
+        steps: [
+          { name: "Omelette (basic)", link: "https://www.youtube.com/results?search_query=basic+omelette+recipe" },
+        ],
+        required: [
+          { name: "Eggs", qty: 2, unit: "pcs" },
+          { name: "Milk", qty: 50, unit: "ml" },
+        ],
+      }
+    ],
+  };
+}
+
+// ---------- Helpers ----------
+function uid() {
+  return Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
+}
+
+function normalizeName(name) {
+  return (name || "").trim();
+}
+
+function fmtQty(qty, unit) {
+  if (qty === null || qty === undefined || qty === "") return "";
+  const num = Number(qty);
+  if (Number.isNaN(num)) return "";
+  const clean = Number.isInteger(num) ? String(num) : String(num);
+  return unit ? `${clean} ${unit}` : `${clean}`;
+}
+
+function minutesToEndTime(startHHMM, durationMins) {
+  const [h, m] = startHHMM.split(":").map(Number);
+  const start = h * 60 + m;
+  const end = start + Number(durationMins || 0);
+  const eh = Math.floor((end % (24 * 60)) / 60);
+  const em = end % 60;
+  return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+}
+
+function sortSchedule() {
+  state.schedule.sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+}
+
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function openDrawer() {
+  els.inventoryDrawer.classList.add("open");
+  els.inventoryDrawer.setAttribute("aria-hidden", "false");
+}
+
+function closeDrawer() {
+  els.inventoryDrawer.classList.remove("open");
+  els.inventoryDrawer.setAttribute("aria-hidden", "true");
+}
+
+// ---------- Rendering ----------
+function renderAll() {
+  sortSchedule();
+  saveState();
   renderTimetable();
-  renderInventory();
+  renderInventoryList();
 }
 
 function renderTimetable() {
-  timetableEl.innerHTML = "";
-  const sorted = [...state.tasks].sort((a, b) => a.time.localeCompare(b.time));
+  els.timetable.innerHTML = "";
 
-  sorted.forEach((task) => {
-    const card = document.createElement("article");
-    card.className = "task-card";
-    card.dataset.taskId = task.id;
+  if (state.schedule.length === 0) {
+    els.timetable.innerHTML = `<p class="muted">No timetable items yet. Add one.</p>`;
+    return;
+  }
 
-    const title = document.createElement("h3");
-    title.textContent = task.title;
+  state.schedule.forEach(task => {
+    const endTime = minutesToEndTime(task.time, task.durationMins);
 
-    const meta = document.createElement("div");
-    meta.className = "task-meta";
-    meta.innerHTML = `<span>${task.time}</span><span>${task.duration} min</span>`;
+    const wrap = document.createElement("div");
+    wrap.className = "task";
 
-    const items = document.createElement("div");
-    items.className = "task-items";
-    task.items.forEach((item) => {
-      const chip = document.createElement("span");
-      chip.className = "chip";
-      chip.textContent = item;
-      items.appendChild(chip);
-    });
+    // IMPORTANT: head shows ONLY time range + duration (no required items shown)
+    const head = document.createElement("div");
+    head.className = "task-head";
 
-    const stepsWrapper = document.createElement("div");
-    stepsWrapper.className = "steps";
-    stepsWrapper.hidden = true;
+    const left = document.createElement("div");
+    left.innerHTML = `
+      <b>${escapeHtml(task.title)}</b>
+      <div class="task-meta">${escapeHtml(task.time)}–${escapeHtml(endTime)} • ${escapeHtml(String(task.durationMins))} min</div>
+    `;
 
-    task.steps.forEach((step, index) => {
-      const stepEl = document.createElement("div");
-      stepEl.className = "step";
-      stepEl.innerHTML = `<strong>Step ${index + 1}:</strong><span>${step.text}</span>`;
-      if (step.link) {
-        const link = document.createElement("a");
-        link.href = step.link;
-        link.target = "_blank";
-        link.rel = "noreferrer";
-        link.textContent = "Open YouTube";
-        stepEl.appendChild(link);
-      }
-      stepsWrapper.appendChild(stepEl);
-    });
+    const right = document.createElement("span");
+    right.className = "pill";
+    right.textContent = "Open";
 
-    const toggleBtn = document.createElement("button");
-    toggleBtn.className = "ghost";
-    toggleBtn.type = "button";
-    toggleBtn.textContent = "Show steps";
-    toggleBtn.addEventListener("click", (event) => {
-      event.stopPropagation();
-      stepsWrapper.hidden = !stepsWrapper.hidden;
-      toggleBtn.textContent = stepsWrapper.hidden ? "Show steps" : "Hide steps";
-    });
+    head.appendChild(left);
+    head.appendChild(right);
 
-    card.append(title, meta, items, toggleBtn, stepsWrapper);
-    card.addEventListener("click", () => showTaskInspector(task));
-    timetableEl.appendChild(card);
-  });
-}
+    const body = document.createElement("div");
+    body.className = "task-body";
 
-function renderInventory() {
-  inventoryEl.innerHTML = "";
-  state.inventory
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .forEach((item) => {
-      const row = document.createElement("div");
-      row.className = "inventory-item";
-      row.dataset.inventoryId = item.id;
-      row.innerHTML = `<strong>${item.name}</strong><span>${item.qty} available</span>`;
-      row.addEventListener("click", () => showInventoryInspector(item));
-      inventoryEl.appendChild(row);
-    });
-}
+    // Steps block
+    const stepsBlock = document.createElement("div");
+    stepsBlock.className = "block";
+    stepsBlock.innerHTML = `<h4>Steps</h4>`;
+    const stepsList = document.createElement("div");
+    stepsList.className = "list";
 
-function showTaskInspector(task) {
-  inspectorTagEl.textContent = "Task details";
-  inspectorEl.innerHTML = "";
-
-  const title = document.createElement("h3");
-  title.textContent = task.title;
-
-  const meta = document.createElement("p");
-  meta.className = "subtitle";
-  meta.textContent = `${task.time} · ${task.duration} minutes`;
-
-  const items = document.createElement("div");
-  items.className = "task-items";
-  task.items.forEach((item) => {
-    const chip = document.createElement("span");
-    chip.className = "chip";
-    chip.textContent = item;
-    items.appendChild(chip);
-  });
-
-  const stepsHeader = document.createElement("h4");
-  stepsHeader.textContent = "Steps";
-
-  const steps = document.createElement("div");
-  steps.className = "steps";
-  task.steps.forEach((step, index) => {
-    const stepEl = document.createElement("div");
-    stepEl.className = "step";
-    stepEl.innerHTML = `<strong>Step ${index + 1}</strong><span>${step.text}</span>`;
-    if (step.link) {
-      const link = document.createElement("a");
-      link.href = step.link;
-      link.target = "_blank";
-      link.rel = "noreferrer";
-      link.textContent = "Open YouTube";
-      stepEl.appendChild(link);
-    }
-    steps.appendChild(stepEl);
-  });
-
-  const removeBtn = document.createElement("button");
-  removeBtn.className = "danger";
-  removeBtn.textContent = "Remove task";
-  removeBtn.addEventListener("click", () => {
-    state.tasks = state.tasks.filter((entry) => entry.id !== task.id);
-    saveState();
-    render();
-    resetInspector();
-  });
-
-  inspectorEl.append(title, meta, items, stepsHeader, steps, removeBtn);
-}
-
-function showInventoryInspector(item) {
-  inspectorTagEl.textContent = "Inventory details";
-  inspectorEl.innerHTML = "";
-
-  const title = document.createElement("h3");
-  title.textContent = item.name;
-
-  const available = document.createElement("p");
-  available.className = "subtitle";
-  available.textContent = `${item.qty} available`;
-
-  const usageList = document.createElement("div");
-  usageList.className = "steps";
-  const relevantTasks = state.tasks.filter((task) => task.items.includes(item.name));
-
-  if (relevantTasks.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "empty";
-    empty.textContent = "No tasks require this item.";
-    usageList.appendChild(empty);
-  } else {
-    relevantTasks.forEach((task) => {
+    (task.steps || []).forEach((s, idx) => {
       const row = document.createElement("div");
       row.className = "step";
-      row.innerHTML = `<strong>${task.title}</strong><span>${task.time} · ${task.duration} min</span>`;
-      usageList.appendChild(row);
+      const a = document.createElement("a");
+      a.href = s.link || "#";
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = s.name || `Step ${idx + 1}`;
+      row.appendChild(a);
+
+      if (s.link) {
+        const meta = document.createElement("span");
+        meta.className = "meta";
+        meta.textContent = "↗";
+        row.appendChild(meta);
+      }
+      stepsList.appendChild(row);
     });
+
+    if ((task.steps || []).length === 0) {
+      stepsList.innerHTML = `<p class="muted small">No steps yet.</p>`;
+    }
+
+    stepsBlock.appendChild(stepsList);
+
+    // Required items block (grouped UNDER THIS TASK)
+    const reqBlock = document.createElement("div");
+    reqBlock.className = "block";
+    reqBlock.innerHTML = `<h4>Required items for: ${escapeHtml(task.title)}</h4>`;
+    const reqList = document.createElement("div");
+    reqList.className = "list";
+
+    (task.required || []).forEach(req => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "item-btn";
+
+      const have = state.inventory[normalizeName(req.name)];
+      const haveText = have ? fmtQty(have.qty, have.unit) : "0";
+
+      const needText = (req.qty === "" || req.qty === null || req.qty === undefined)
+        ? ""
+        : fmtQty(req.qty, req.unit);
+
+      btn.innerHTML = `
+        <span>
+          ${escapeHtml(req.name)}
+          ${needText ? `<span class="muted small"> • need ${escapeHtml(needText)}</span>` : ""}
+        </span>
+        <span class="pill">${escapeHtml(haveText)} have</span>
+      `;
+
+      btn.addEventListener("click", () => showInspector(req, task));
+      reqList.appendChild(btn);
+    });
+
+    if ((task.required || []).length === 0) {
+      reqList.innerHTML = `<p class="muted small">No required items yet.</p>`;
+    }
+
+    // manage task tools
+    const tools = document.createElement("div");
+    tools.className = "list";
+    tools.style.marginTop = "12px";
+
+    const addStepBtn = document.createElement("button");
+    addStepBtn.type = "button";
+    addStepBtn.className = "ghost";
+    addStepBtn.textContent = "Add step";
+    addStepBtn.addEventListener("click", () => addStepPrompt(task));
+
+    const addReqBtn = document.createElement("button");
+    addReqBtn.type = "button";
+    addReqBtn.className = "ghost";
+    addReqBtn.textContent = "Add required item";
+    addReqBtn.addEventListener("click", () => addRequiredPrompt(task));
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "danger";
+    delBtn.textContent = "Delete task";
+    delBtn.addEventListener("click", () => {
+      state.schedule = state.schedule.filter(t => t.id !== task.id);
+      renderAll();
+      els.inspector.innerHTML = `<p class="muted">Deleted.</p>`;
+    });
+
+    tools.appendChild(addStepBtn);
+    tools.appendChild(addReqBtn);
+    tools.appendChild(delBtn);
+
+    reqBlock.appendChild(reqList);
+    reqBlock.appendChild(tools);
+
+    body.appendChild(stepsBlock);
+    body.appendChild(reqBlock);
+
+    head.addEventListener("click", () => {
+      body.classList.toggle("open");
+      right.textContent = body.classList.contains("open") ? "Close" : "Open";
+    });
+
+    wrap.appendChild(head);
+    wrap.appendChild(body);
+    els.timetable.appendChild(wrap);
+  });
+}
+
+function renderInventoryList() {
+  els.inventoryList.innerHTML = "";
+  const entries = Object.entries(state.inventory).sort((a,b) => a[0].localeCompare(b[0]));
+
+  if (entries.length === 0) {
+    els.inventoryList.innerHTML = `<p class="muted">No inventory yet.</p>`;
+    return;
   }
 
-  const quantityControls = document.createElement("div");
-  quantityControls.className = "task-items";
+  entries.forEach(([name, obj]) => {
+    const row = document.createElement("div");
+    row.className = "inv-row";
+    row.innerHTML = `
+      <span>${escapeHtml(name)}</span>
+      <span class="pill">${escapeHtml(fmtQty(obj.qty, obj.unit))}</span>
+    `;
+    els.inventoryList.appendChild(row);
+  });
+}
 
-  const decrementBtn = document.createElement("button");
-  decrementBtn.textContent = "-";
-  decrementBtn.type = "button";
-  decrementBtn.addEventListener("click", () => updateInventoryQty(item.id, -1));
+function showInspector(req, task) {
+  const key = normalizeName(req.name);
+  const have = state.inventory[key];
+  const haveQty = have ? Number(have.qty) : 0;
+  const needQty =
+    (req.qty === "" || req.qty === null || req.qty === undefined) ? null : Number(req.qty);
 
-  const incrementBtn = document.createElement("button");
-  incrementBtn.textContent = "+";
-  incrementBtn.type = "button";
-  incrementBtn.addEventListener("click", () => updateInventoryQty(item.id, 1));
+  let status = "";
+  if (needQty === null || Number.isNaN(needQty)) {
+    status = "No required quantity set.";
+  } else {
+    status = haveQty >= needQty ? "✅ You have enough." : "⚠️ You may need to buy more.";
+  }
 
-  const removeBtn = document.createElement("button");
-  removeBtn.className = "danger";
-  removeBtn.textContent = "Remove item";
-  removeBtn.type = "button";
-  removeBtn.addEventListener("click", () => {
-    state.inventory = state.inventory.filter((entry) => entry.id !== item.id);
-    saveState();
-    render();
-    resetInspector();
+  els.inspector.innerHTML = `
+    <div>
+      <h3 style="margin:0 0 6px;">${escapeHtml(req.name)}</h3>
+      <p class="muted" style="margin:0 0 10px;">
+        For: <b>${escapeHtml(task.title)}</b> (${escapeHtml(task.time)})
+      </p>
+
+      <div class="inv-row">
+        <span>Needed</span>
+        <span class="pill">${escapeHtml(needQty === null ? "—" : fmtQty(needQty, req.unit))}</span>
+      </div>
+
+      <div class="inv-row" style="margin-top:8px;">
+        <span>You have</span>
+        <span class="pill">${escapeHtml(have ? fmtQty(have.qty, have.unit) : "0")}</span>
+      </div>
+
+      <p class="small muted" style="margin-top:10px;">${escapeHtml(status)}</p>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button type="button" class="ghost" id="openInvBtn">Open inventory</button>
+        <button type="button" class="ghost" id="consumeBtn">Consume needed qty</button>
+      </div>
+
+      <p class="small muted" style="margin-top:6px;">
+        “Consume” subtracts the needed quantity from inventory (if set).
+      </p>
+    </div>
+  `;
+
+  document.getElementById("openInvBtn").addEventListener("click", () => {
+    openDrawer();
   });
 
-  quantityControls.append(decrementBtn, incrementBtn, removeBtn);
-
-  inspectorEl.append(title, available, usageList, quantityControls);
+  document.getElementById("consumeBtn").addEventListener("click", () => {
+    const need = (needQty === null || Number.isNaN(needQty)) ? 0 : needQty;
+    if (!state.inventory[key]) state.inventory[key] = { qty: 0, unit: req.unit || "" };
+    state.inventory[key].qty = Math.max(0, Number(state.inventory[key].qty) - need);
+    renderAll();
+    showInspector(req, task);
+  });
 }
 
-function updateInventoryQty(id, delta) {
-  const entry = state.inventory.find((item) => item.id === id);
-  if (!entry) return;
-  entry.qty = Math.max(0, entry.qty + delta);
-  saveState();
-  render();
-  showInventoryInspector(entry);
+// ---------- Task quick add (prompts) ----------
+function addStepPrompt(task) {
+  const name = prompt(`Add step for "${task.title}" (step name):`);
+  if (!name) return;
+  const link = prompt("Optional YouTube link:");
+  task.steps = task.steps || [];
+  task.steps.push({ name: name.trim(), link: (link || "").trim() });
+  renderAll();
 }
 
-function resetInspector() {
-  inspectorTagEl.textContent = "Select a task or item";
-  inspectorEl.innerHTML = "<p class=\"empty\">Click a task or inventory item to see details.</p>";
+function addRequiredPrompt(task) {
+  const item = prompt(`Add required item for "${task.title}" (item name):`);
+  if (!item) return;
+  const qtyRaw = prompt("Needed quantity? (leave blank if not needed)");
+  const unit = prompt("Unit? (optional)");
+  const qty = (qtyRaw === null || qtyRaw.trim() === "") ? "" : Number(qtyRaw);
+  task.required = task.required || [];
+  task.required.push({ name: item.trim(), qty, unit: (unit || "").trim() });
+  renderAll();
 }
 
-function parseSteps(raw) {
-  return raw
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const [textPart, linkPart] = line.split("|").map((part) => part.trim());
-      return {
-        text: textPart,
-        link: linkPart || "",
-      };
-    });
-}
+// ---------- Events ----------
+els.inventoryToggleBtn.addEventListener("click", () => openDrawer());
+els.closeInventoryBtn.addEventListener("click", () => closeDrawer());
 
-function parseItems(raw) {
-  return raw
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-addTaskBtn.addEventListener("click", () => taskDialog.showModal());
-
-cancelTaskBtn.addEventListener("click", () => taskDialog.close());
-
-taskForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const title = document.getElementById("task-title").value.trim();
-  const time = document.getElementById("task-time").value;
-  const duration = Number.parseInt(document.getElementById("task-duration").value, 10);
-  const items = parseItems(document.getElementById("task-items").value);
-  const steps = parseSteps(document.getElementById("task-steps").value);
-
-  const newTask = {
-    id: crypto.randomUUID(),
-    title,
-    time,
-    duration,
-    items,
-    steps,
-  };
-
-  state.tasks.push(newTask);
-  saveState();
-  render();
-  taskForm.reset();
-  taskDialog.close();
+// close drawer on Esc
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeDrawer();
 });
 
-inventoryForm.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const nameInput = document.getElementById("inventory-name");
-  const qtyInput = document.getElementById("inventory-qty");
-
-  const name = nameInput.value.trim();
-  const qty = Number.parseInt(qtyInput.value, 10);
+els.inventoryForm.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = normalizeName(els.invName.value);
+  const qty = Number(els.invQty.value);
+  const unit = normalizeName(els.invUnit.value);
 
   if (!name) return;
+  state.inventory[name] = { qty: Number.isFinite(qty) ? qty : 0, unit };
+  els.invName.value = "";
+  els.invQty.value = "";
+  els.invUnit.value = "";
+  renderAll();
+});
 
-  const existing = state.inventory.find((item) => item.name.toLowerCase() === name.toLowerCase());
-  if (existing) {
-    existing.qty += qty;
-  } else {
-    state.inventory.push({
-      id: crypto.randomUUID(),
-      name,
-      qty,
-    });
+els.addTaskBtn.addEventListener("click", () => {
+  els.taskDialog.showModal();
+});
+
+els.saveTaskBtn.addEventListener("click", (e) => {
+  // dialog closes automatically. We validate before allowing it to close.
+  const time = els.taskTime.value;
+  const durationMins = Number(els.taskDuration.value);
+  const title = normalizeName(els.taskTitle.value);
+  const notes = normalizeName(els.taskNotes.value);
+
+  if (!time || !title || !Number.isFinite(durationMins)) {
+    e.preventDefault();
+    alert("Please fill start time, duration, and task name.");
+    return;
   }
 
-  saveState();
-  render();
-  nameInput.value = "";
-  qtyInput.value = "1";
+  state.schedule.push({
+    id: uid(),
+    time,
+    durationMins,
+    title,
+    notes,
+    steps: [],
+    required: [],
+  });
+
+  els.taskTitle.value = "";
+  els.taskNotes.value = "";
+  renderAll();
 });
 
-resetBtn.addEventListener("click", () => {
-  state = structuredClone(defaultData);
-  saveState();
-  render();
-  resetInspector();
+els.exportBtn.addEventListener("click", async () => {
+  const data = JSON.stringify(state, null, 2);
+  try {
+    await navigator.clipboard.writeText(data);
+    els.exportBtn.textContent = "Copied!";
+    setTimeout(() => (els.exportBtn.textContent = "Export"), 900);
+  } catch {
+    prompt("Copy your JSON:", data);
+  }
 });
 
-render();
+els.importBtn.addEventListener("click", () => {
+  els.importText.value = "";
+  els.importDialog.showModal();
+});
+
+els.doImportBtn.addEventListener("click", (e) => {
+  try {
+    const incoming = JSON.parse(els.importText.value);
+    if (!incoming.inventory || !incoming.schedule) throw new Error("Bad format");
+    state = incoming;
+    renderAll();
+  } catch {
+    alert("Import failed. Paste valid JSON exported from this app.");
+    e.preventDefault();
+  }
+});
+
+els.resetBtn.addEventListener("click", () => {
+  const ok = confirm("Reset to demo data?");
+  if (!ok) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = demoState();
+  renderAll();
+  els.inspector.innerHTML = `<p class="muted">Reset done.</p>`;
+});
+
+// ---------- Init ----------
+renderAll();
+closeDrawer();
+
