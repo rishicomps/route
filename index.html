@@ -1,89 +1,136 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Schedula — Micro-Managing Timetable</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Routé</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
   <header class="app-header">
-    <div>
-      <h1>Schedula</h1>
-      <p class="subtitle">Micro-managing timetable with purposeful inventory.</p>
+    <div class="brand">
+      <h1>Routé</h1>
+      <p class="sub">Micro-managing timetable.</p>
     </div>
-    <button id="reset-btn" class="ghost">Reset demo data</button>
+
+    <div class="header-actions">
+      <button id="inventoryToggleBtn" class="ghost">Inventory</button>
+      <button id="exportBtn" class="ghost">Export</button>
+      <button id="importBtn" class="ghost">Import</button>
+      <button id="resetBtn" class="danger">Reset demo data</button>
+    </div>
   </header>
 
-  <main class="app-grid">
-    <section class="panel timetable-panel">
-      <div class="panel-header">
+  <main class="grid">
+    <!-- Timetable -->
+    <section class="card">
+      <div class="section-header">
         <h2>Timetable</h2>
-        <button id="add-task-btn" class="primary">Add task</button>
+        <button id="addTaskBtn" class="pill-btn">Add task</button>
       </div>
+
       <div id="timetable" class="timetable"></div>
     </section>
 
-    <section class="panel inventory-panel">
-      <div class="panel-header">
-        <h2>Inventory</h2>
-      </div>
-      <div id="inventory" class="inventory"></div>
-      <form id="inventory-form" class="form-grid">
-        <h3>Add item</h3>
-        <label>
-          Item name
-          <input type="text" id="inventory-name" placeholder="Tea leaves" required />
-        </label>
-        <label>
-          Quantity
-          <input type="number" id="inventory-qty" min="0" step="1" value="1" required />
-        </label>
-        <button type="submit" class="primary">Save item</button>
-      </form>
-    </section>
-
-    <section class="panel inspector-panel">
-      <div class="panel-header">
+    <!-- Inspector -->
+    <section class="card">
+      <div class="section-header">
         <h2>Inspector</h2>
-        <span id="inspector-tag" class="tag">Select a task or item</span>
+        <span class="pill">Select a task or item</span>
       </div>
+
       <div id="inspector" class="inspector">
-        <p class="empty">Click a task or inventory item to see details.</p>
+        <p class="muted">Click a timetable task to expand steps and required items. Click an item to check availability.</p>
       </div>
     </section>
   </main>
 
-  <dialog id="task-dialog" class="dialog">
-    <form method="dialog" id="task-form" class="dialog-form">
-      <h3>New task</h3>
-      <label>
-        Title
-        <input type="text" id="task-title" placeholder="Morning prep" required />
-      </label>
-      <label>
-        Start time
-        <input type="time" id="task-time" required />
-      </label>
-      <label>
-        Duration (minutes)
-        <input type="number" id="task-duration" min="5" step="5" value="30" required />
-      </label>
-      <label>
-        Required items (comma separated)
-        <input type="text" id="task-items" placeholder="Notebook, Pen" />
-      </label>
-      <label>
-        Steps (one per line, optional "|" with YouTube link)
-        <textarea id="task-steps" rows="4" placeholder="Review agenda | https://youtu.be/..."></textarea>
-      </label>
-      <div class="dialog-actions">
-        <button type="button" id="cancel-task" class="ghost">Cancel</button>
-        <button type="submit" class="primary">Add task</button>
+  <!-- Inventory Drawer -->
+  <aside id="inventoryDrawer" class="drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <h3>Inventory</h3>
+      <div class="drawer-actions">
+        <button id="closeInventoryBtn" class="ghost">Close</button>
       </div>
+    </div>
+
+    <div class="drawer-body">
+      <div id="inventoryList" class="inventory-list"></div>
+
+      <div class="divider"></div>
+
+      <h3>Add / update item</h3>
+      <form id="inventoryForm" class="form">
+        <label>
+          Item name
+          <input id="invName" placeholder="Yoga mat / Eggs / Milk" required />
+        </label>
+
+        <div class="row">
+          <label>
+            Quantity
+            <input id="invQty" type="number" step="0.01" min="0" placeholder="1" required />
+          </label>
+          <label>
+            Unit (optional)
+            <input id="invUnit" placeholder="pcs / g / ml" />
+          </label>
+        </div>
+
+        <button type="submit">Save</button>
+        <p class="muted small">Inventory is global; tasks reference it.</p>
+      </form>
+    </div>
+  </aside>
+
+  <!-- Add Task Dialog -->
+  <dialog id="taskDialog">
+    <form method="dialog" class="modal">
+      <h3>Add task</h3>
+
+      <div class="row">
+        <label>
+          Start time
+          <input id="taskTime" type="time" required />
+        </label>
+        <label>
+          Duration (mins)
+          <input id="taskDuration" type="number" min="1" value="45" required />
+        </label>
+      </div>
+
+      <label>
+        Task name
+        <input id="taskTitle" placeholder="Yoga / Cooking / Study" required />
+      </label>
+
+      <label>
+        Notes (optional)
+        <input id="taskNotes" placeholder="Hips + breath / Pasta night / etc." />
+      </label>
+
+      <div class="modal-actions">
+        <button value="cancel" class="ghost">Cancel</button>
+        <button id="saveTaskBtn" value="ok">Add</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Import Dialog -->
+  <dialog id="importDialog">
+    <form method="dialog" class="modal">
+      <h3>Import JSON</h3>
+      <textarea id="importText" placeholder='Paste exported JSON here...'></textarea>
+      <div class="modal-actions">
+        <button value="cancel" class="ghost">Cancel</button>
+        <button id="doImportBtn" value="ok">Import</button>
+      </div>
+      <p class="muted small">Import replaces your current data.</p>
     </form>
   </dialog>
 
   <script src="app.js"></script>
 </body>
 </html>
+
