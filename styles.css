@@ -1,0 +1,276 @@
+:root {
+  color-scheme: dark;
+  --bg: #0d0d0f;
+  --panel: #16161b;
+  --panel-light: #1f1f26;
+  --text: #f5f2ec;
+  --muted: #b9b2a6;
+  --accent: #c7a46f;
+  --accent-strong: #e0c189;
+  --border: #2a2a33;
+  --danger: #b85858;
+  font-family: "Inter", "Georgia", serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at top, #1b1b22, #0c0c0f 55%);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--accent-strong);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2rem 4vw 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.subtitle {
+  color: var(--muted);
+  margin-top: 0.4rem;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  padding: 2rem 4vw 3rem;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+button {
+  border: 1px solid var(--border);
+  background: var(--panel-light);
+  color: var(--text);
+  padding: 0.55rem 1rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  border-color: var(--accent-strong);
+  color: var(--accent-strong);
+}
+
+button.primary {
+  background: linear-gradient(120deg, #3a2d1f, #6e5b3a);
+  border-color: #8b7350;
+  color: var(--text);
+}
+
+button.primary:hover {
+  filter: brightness(1.1);
+}
+
+button.ghost {
+  background: transparent;
+}
+
+button.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.timetable {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.task-card {
+  background: var(--panel-light);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, border 0.2s ease;
+}
+
+.task-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+}
+
+.task-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.task-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(199, 164, 111, 0.15);
+  border: 1px solid rgba(199, 164, 111, 0.4);
+  font-size: 0.8rem;
+}
+
+.inventory {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.inventory-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--panel-light);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.inventory-item strong {
+  font-size: 0.95rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 0.85rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+input,
+textarea {
+  border: 1px solid var(--border);
+  background: #111117;
+  color: var(--text);
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.inspector {
+  min-height: 280px;
+  display: grid;
+  gap: 1rem;
+}
+
+.inspector .empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.tag {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.steps {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.step {
+  display: grid;
+  gap: 0.25rem;
+  background: #13131a;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border);
+}
+
+.step a {
+  font-size: 0.85rem;
+}
+
+.dialog::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.dialog {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 16px;
+  padding: 1.5rem;
+  width: min(520px, 90vw);
+}
+
+.dialog-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+@media (max-width: 800px) {
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
