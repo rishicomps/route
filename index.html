@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Schedula — Micro-Managing Timetable</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <h1>Schedula</h1>
+      <p class="subtitle">Micro-managing timetable with purposeful inventory.</p>
+    </div>
+    <button id="reset-btn" class="ghost">Reset demo data</button>
+  </header>
+
+  <main class="app-grid">
+    <section class="panel timetable-panel">
+      <div class="panel-header">
+        <h2>Timetable</h2>
+        <button id="add-task-btn" class="primary">Add task</button>
+      </div>
+      <div id="timetable" class="timetable"></div>
+    </section>
+
+    <section class="panel inventory-panel">
+      <div class="panel-header">
+        <h2>Inventory</h2>
+      </div>
+      <div id="inventory" class="inventory"></div>
+      <form id="inventory-form" class="form-grid">
+        <h3>Add item</h3>
+        <label>
+          Item name
+          <input type="text" id="inventory-name" placeholder="Tea leaves" required />
+        </label>
+        <label>
+          Quantity
+          <input type="number" id="inventory-qty" min="0" step="1" value="1" required />
+        </label>
+        <button type="submit" class="primary">Save item</button>
+      </form>
+    </section>
+
+    <section class="panel inspector-panel">
+      <div class="panel-header">
+        <h2>Inspector</h2>
+        <span id="inspector-tag" class="tag">Select a task or item</span>
+      </div>
+      <div id="inspector" class="inspector">
+        <p class="empty">Click a task or inventory item to see details.</p>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="task-dialog" class="dialog">
+    <form method="dialog" id="task-form" class="dialog-form">
+      <h3>New task</h3>
+      <label>
+        Title
+        <input type="text" id="task-title" placeholder="Morning prep" required />
+      </label>
+      <label>
+        Start time
+        <input type="time" id="task-time" required />
+      </label>
+      <label>
+        Duration (minutes)
+        <input type="number" id="task-duration" min="5" step="5" value="30" required />
+      </label>
+      <label>
+        Required items (comma separated)
+        <input type="text" id="task-items" placeholder="Notebook, Pen" />
+      </label>
+      <label>
+        Steps (one per line, optional "|" with YouTube link)
+        <textarea id="task-steps" rows="4" placeholder="Review agenda | https://youtu.be/..."></textarea>
+      </label>
+      <div class="dialog-actions">
+        <button type="button" id="cancel-task" class="ghost">Cancel</button>
+        <button type="submit" class="primary">Add task</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
